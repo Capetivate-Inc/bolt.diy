@@ -130,6 +130,28 @@ export default class AnthropicProvider extends BaseProvider {
       headers: { 'anthropic-beta': 'output-128k-2025-02-19' },
     });
 
-    return anthropic(model);
+    const raw = anthropic(model);
+
+    // Claude 4.7+ rejects the `temperature` parameter with
+    // "temperature is deprecated for this model". The AI SDK still injects it
+    // from internal defaults even when upstream code omits it. Wrap the
+    // LanguageModelV1 so temperature is stripped at the final boundary,
+    // right before the HTTP call to Anthropic.
+    const stripTemperature = (args: any) => {
+      if (args && typeof args === 'object' && 'temperature' in args) {
+        const { temperature: _discarded, ...rest } = args;
+        return rest;
+      }
+
+      return args;
+    };
+
+    const wrapped: LanguageModelV1 = {
+      ...raw,
+      doStream: (opts) => raw.doStream(stripTemperature(opts)),
+      doGenerate: (opts) => raw.doGenerate(stripTemperature(opts)),
+    };
+
+    return wrapped;
   };
 }
