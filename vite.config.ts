@@ -43,7 +43,11 @@ export default defineConfig((config) => {
           return null;
         },
       },
-      config.mode !== 'test' && remixCloudflareDevProxy(),
+      // Only run the Cloudflare dev proxy in `serve` mode (dev). Under
+      // CloudLinux CageFS the `workerd` binary it spawns is blocked, which
+      // causes `remix vite:build` to fail with EPIPE. Production build
+      // output is the same either way.
+      config.command === 'serve' && config.mode !== 'test' && remixCloudflareDevProxy(),
       remixVitePlugin({
         future: {
           v3_fetcherPersist: true,
