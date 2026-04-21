@@ -204,10 +204,16 @@ async function llmCallAction({ context, request }: ActionFunctionArgs) {
         toolChoice: 'none' as const,
       };
 
-      // For reasoning models, set temperature to 1 (required by OpenAI API)
+      // Anthropic Claude 4.7+ deprecated the temperature parameter — omit it so
+      // the API doesn't reject the request. Defaults (~1.0) are fine for
+      // template-selection-style calls. For OpenAI reasoning models, temperature
+      // must be 1.
+      const isAnthropic = providerInfo.name === 'Anthropic';
       const finalParams = isReasoning
-        ? { ...baseParams, temperature: 1 } // Set to 1 for reasoning models (only supported value)
-        : { ...baseParams, temperature: 0 };
+        ? { ...baseParams, temperature: 1 }
+        : isAnthropic
+          ? baseParams
+          : { ...baseParams, temperature: 0 };
 
       // DEBUG: Log final parameters
       logger.info(

@@ -237,23 +237,25 @@ export async function streamText(props: {
   // Use maxCompletionTokens for reasoning models (o1, GPT-5), maxTokens for traditional models
   const tokenParams = isReasoning ? { maxCompletionTokens: safeMaxTokens } : { maxTokens: safeMaxTokens };
 
-  // Filter out unsupported parameters for reasoning models
+  // Filter out unsupported parameters for reasoning models, and strip
+  // `temperature` for Anthropic — Claude 4.7+ deprecated it and the API
+  // rejects requests that include it.
+  const isAnthropic = provider.name === 'Anthropic';
+  const reasoningBanned = [
+    'temperature',
+    'topP',
+    'presencePenalty',
+    'frequencyPenalty',
+    'logprobs',
+    'topLogprobs',
+    'logitBias',
+  ];
+  const anthropicBanned = ['temperature'];
+  const bannedKeys = isReasoning ? reasoningBanned : isAnthropic ? anthropicBanned : [];
+
   const filteredOptions =
-    isReasoning && options
-      ? Object.fromEntries(
-          Object.entries(options).filter(
-            ([key]) =>
-              ![
-                'temperature',
-                'topP',
-                'presencePenalty',
-                'frequencyPenalty',
-                'logprobs',
-                'topLogprobs',
-                'logitBias',
-              ].includes(key),
-          ),
-        )
+    bannedKeys.length && options
+      ? Object.fromEntries(Object.entries(options).filter(([key]) => !bannedKeys.includes(key)))
       : options || {};
 
   // DEBUG: Log filtered options
