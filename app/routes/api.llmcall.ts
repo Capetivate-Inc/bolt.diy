@@ -209,11 +209,17 @@ async function llmCallAction({ context, request }: ActionFunctionArgs) {
       // template-selection-style calls. For OpenAI reasoning models, temperature
       // must be 1.
       const isAnthropic = providerInfo.name === 'Anthropic';
-      const finalParams = isReasoning
+      const finalParams: Record<string, unknown> = isReasoning
         ? { ...baseParams, temperature: 1 }
         : isAnthropic
-          ? baseParams
+          ? { ...baseParams }
           : { ...baseParams, temperature: 0 };
+
+      // Belt-and-suspenders: even if the AI SDK adapter would inject a default
+      // temperature for Anthropic, wipe it before the call lands at the API.
+      if (isAnthropic) {
+        delete finalParams.temperature;
+      }
 
       // DEBUG: Log final parameters
       logger.info(

@@ -275,7 +275,7 @@ export async function streamText(props: {
     ),
   );
 
-  const streamParams = {
+  const streamParams: Record<string, unknown> = {
     model: provider.getModelInstance({
       model: modelDetails.name,
       serverEnv,
@@ -290,6 +290,14 @@ export async function streamText(props: {
     // Set temperature to 1 for reasoning models (required by OpenAI API)
     ...(isReasoning ? { temperature: 1 } : {}),
   };
+
+  // Belt-and-suspenders: Anthropic Claude 4.7+ rejects any request that
+  // includes `temperature`. Some layer up the stack (or the old
+  // @ai-sdk/anthropic adapter) can still inject it — wipe it here no matter
+  // what else is in streamParams for Anthropic.
+  if (isAnthropic) {
+    delete streamParams.temperature;
+  }
 
   // DEBUG: Log final streaming parameters
   logger.info(
